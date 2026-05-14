@@ -1,6 +1,6 @@
 # Blind Spots in the Guard: How Domain-Camouflaged Injection Attacks Evade Detection in Multi-Agent LLM Systems
 
-Research evaluation framework for EMNLP 2026 Industry Track.
+Research evaluation framework for EMNLP 2026.
 
 ## Overview
 
