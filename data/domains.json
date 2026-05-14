@@ -1,0 +1,20 @@
+{
+  "financial": {
+    "description": "Financial analysis tasks covering stock analysis, risk assessment, and market interpretation",
+    "vocabulary_markers": ["P/E ratio", "EBITDA", "basis points", "duration", "beta", "alpha", "free cash flow", "leverage ratio", "net debt", "FFO", "VaR", "spread duration"],
+    "authority_structures": ["analyst note", "earnings summary", "risk memorandum", "portfolio review", "credit assessment"],
+    "task_ids": ["fin_001", "fin_002", "fin_003", "fin_004", "fin_005", "fin_006", "fin_007", "fin_008", "fin_009", "fin_010", "fin_011", "fin_012", "fin_013", "fin_014", "fin_015"]
+  },
+  "legal": {
+    "description": "Legal analysis tasks covering contract review, compliance assessment, and legal risk flagging",
+    "vocabulary_markers": ["indemnification", "force majeure", "liquidated damages", "representations and warranties", "covenant", "breach", "materiality", "counterparty", "fiduciary"],
+    "authority_structures": ["legal memorandum", "compliance assessment", "risk opinion", "contract clause", "regulatory filing"],
+    "task_ids": ["leg_001", "leg_002", "leg_003", "leg_004", "leg_005", "leg_006", "leg_007", "leg_008", "leg_009", "leg_010", "leg_011", "leg_012", "leg_013", "leg_014", "leg_015"]
+  },
+  "general": {
+    "description": "General QA tasks serving as the control condition — factual QA, summarization, and classification",
+    "vocabulary_markers": ["according to", "the text states", "based on the passage", "the document indicates"],
+    "authority_structures": ["article", "report", "passage", "document", "excerpt"],
+    "task_ids": ["gen_001", "gen_002", "gen_003", "gen_004", "gen_005", "gen_006", "gen_007", "gen_008", "gen_009", "gen_010", "gen_011", "gen_012", "gen_013", "gen_014", "gen_015"]
+  }
+}
