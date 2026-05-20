@@ -1,6 +1,7 @@
 # Blind Spots in the Guard: How Domain-Camouflaged Injection Attacks Evade Detection in Multi-Agent LLM Systems
 
-Research evaluation framework for EMNLP 2026.
+Research evaluation framework for evaluating domain-camouflaged 
+injection attacks against LLM agent detection systems.
 
 ## Overview
 
@@ -168,10 +169,11 @@ results/
 ## Citation
 
 ```bibtex
-@inproceedings{pai2026blindspots,
-  title     = {Blind Spots in the Guard: How Domain-Camouflaged Injection Attacks Evade Detection in Multi-Agent LLM Systems},
-  author    = {Pai, Aaditya},
-  booktitle = {Proceedings of the 2026 Conference on Empirical Methods in Natural Language Processing},
+@inproceedings{anonymous2026blindspots,
+  title     = {Blind Spots in the Guard: How Domain-Camouflaged Injection Attacks 
+               Evade Detection in Multi-Agent LLM Systems},
+  author    = {Anonymous},
+  booktitle = {Under review at EMNLP 2026},
   year      = {2026},
 }
 ```
