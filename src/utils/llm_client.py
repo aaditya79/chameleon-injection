@@ -268,7 +268,14 @@ class LLMClient:
         )
         latency_ms = (time.monotonic() - t0) * 1000
 
-        content = response.choices[0].message.content or ""
+        if not response.choices or response.choices[0].message.content is None:
+            finish = (response.choices[0].finish_reason
+                      if response.choices else "no_choices")
+            raise ValueError(
+                f"Empty response from {self.model} (finish_reason={finish!r})"
+            )
+
+        content = response.choices[0].message.content
         input_tokens = response.usage.prompt_tokens if response.usage else 0
         output_tokens = response.usage.completion_tokens if response.usage else 0
         cost = _compute_cost(self.provider, self.model, input_tokens, output_tokens)
@@ -349,9 +356,24 @@ class LLMClient:
             except Exception as exc:
                 last_exc = exc
                 err_str = str(exc).lower()
+                is_content_filter = "content_filter" in err_str or ("400" in err_str and "badrequest" in err_str)
+                if is_content_filter:
+                    print(f"[LLMClient] Content filter triggered, skipping trial.")
+                    from dataclasses import fields
+                    return CompletionResult(
+                        content="CONTENT_FILTERED",
+                        input_tokens=0,
+                        output_tokens=0,
+                        cost_usd=0.0,
+                        latency_ms=0.0,
+                        model=self.model,
+                        provider=self.provider,
+                    )
                 is_transient = any(
                     kw in err_str
-                    for kw in ("rate limit", "429", "connection", "timeout", "503", "502")
+                    for kw in ("rate limit", "429", "connection", "timeout",
+                            "503", "502", "empty response", "apitimeout",
+                            "connecttimeout", "timed out")
                 )
                 if not is_transient or attempt == max_retries:
                     raise

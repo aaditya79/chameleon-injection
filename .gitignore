@@ -10,3 +10,6 @@ build/
 *.ipynb_checkpoints/
 .venv/
 venv/
+.env
+results/trials.jsonl # large file
+results/all_results.json

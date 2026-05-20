@@ -61,7 +61,7 @@ class Config:
 
     # --------------- Second model (comparison / cross-model validation) ---------------
     second_provider: str = "openrouter"
-    second_model: str = "mistralai/mistral-7b-instruct:free"
+    second_model: str = "google/gemini-2.0-flash-001"
     second_api_key: str = field(
         default_factory=lambda: os.environ.get("OPENROUTER_API_KEY", "")
     )
