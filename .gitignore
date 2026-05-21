@@ -13,3 +13,11 @@ venv/
 .env
 results/trials.jsonl # large file
 results/all_results.json
+.env
+*.env
+.env.*
+results/trials.jsonl
+results/all_results.json
+__pycache__/
+*.pyc
+.DS_Store
