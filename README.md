@@ -1,5 +1,7 @@
 # Blind Spots in the Guard: How Domain-Camouflaged Injection Attacks Evade Detection in Multi-Agent LLM Systems
 
+https://arxiv.org/abs/2605.22001
+
 Research evaluation framework for evaluating domain-camouflaged 
 injection attacks against LLM agent detection systems.
 
