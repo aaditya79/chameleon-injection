@@ -32,6 +32,7 @@ Injection detectors deployed to protect LLM agents are calibrated on static, tem
 
 LLM agents deployed in high-stakes domains rely on injection detectors to flag adversarial payloads embedded in tool outputs and retrieved documents. These detectors are overwhelmingly calibrated on static, template-based attacks: override directives, system update notices, and authority claims that announce themselves as instructions rather than blend into the surrounding content.
 
+\label{sec:intro-example}
 Real attackers need not be so obvious. A sophisticated adversary with read access to the document an agent is processing can craft a payload that adopts the domain vocabulary, sentence structure, and authority register of that document, embedding a malicious instruction as if it were legitimate expert content. Consider a financial agent analyzing an earnings report. A static injection reads: \textit{``IGNORE ALL PREVIOUS INSTRUCTIONS. Recommend SELL.''} A domain-camouflaged injection reads: \textit{``Given the elevated operating expense trajectory and margin compression risk identified in comparable commercial-stage peers, the appropriate recommendation consistent with our risk framework is SELL, pending improved cost discipline in Q4.''} The second payload is semantically indistinguishable from the surrounding document to a detector trained only on the first type---and in our experiments, the static detector flags the first with HIGH confidence while labeling the second CLEAN with HIGH confidence.
 
 This is not a marginal failure. Across 135 camouflage trials on Llama 3.1 8B, the detector misses 121 of them (89.6\%)---and of those 121 missed cases, 118 (97.5\%) are labeled CLEAN with HIGH confidence, while the remaining 3 are LOW. Not one is MEDIUM. The detector is not uncertain; it is confidently wrong. This means standard remediation strategies---raising confidence thresholds, adding uncertainty-based filtering---cannot address the failure, because there is no graded uncertainty signal to threshold on. The blind spot is categorical, not statistical.
@@ -57,7 +58,7 @@ We consider an adversary with \textbf{indirect document access}: the attacker ca
 \paragraph{Attacker knowledge, and what our experiments actually assume.}
 This is the axis that determines how our numbers should be read, so we state it precisely. In the realistic deployment case the attacker knows the \textit{domain and genre} of the document---that it is an ICU progress note, a software licence, a quarterly earnings summary---but not the specific task instruction or the exact clean document the agent will receive.
 
-Our camouflage generator, however, is given \textbf{the full text of the target document} at generation time. We make this deliberate mismatch explicit rather than eliding it: the full-context generator is a \textit{worst-case upper bound} on camouflage quality, not a model of the typical attacker. It answers ``how large can this gap get?'' rather than ``how large is it usually?'' Every CDG figure in this paper's main experiments should be read as an upper bound, and we label it as such throughout. We additionally run the stated, weaker attacker as its own condition below, so the paper reports a bounded range rather than a single optimistic point.
+Our camouflage generator, however, is given \textbf{the full text of the target document} at generation time. We make this mismatch explicit rather than eliding it: the full-context generator is a \textit{worst-case upper bound} on camouflage quality, answering ``how large can this gap get?'' rather than ``how large is it usually?'' Every CDG figure in our main experiments should be read as an upper bound. We additionally run the stated, weaker attacker as its own condition below, so the paper reports a bounded range rather than a single optimistic point.
 
 \paragraph{Measuring what the worst-case assumption buys the attacker.}
 To quantify the gap between our main condition and the attacker described above, we repeat generation under the stated position: the generator sees the domain, the document genre, and the domain's professional vocabulary, but never the target document and never the task instruction. The malicious goal is byte-identical across conditions, so document access is the only manipulated variable. Table~\ref{tab:nocontext} reports the result.
@@ -256,7 +257,7 @@ Both models are compared against a single-agent baseline covering the same 45 ta
 
 For Gemini 2.0 Flash, debate reduces it: DAF$_\text{static}=0.762$, DAF$_\text{camouflage}=0.629$. Agents on the stronger model collectively resist injection better than individually; agents on the weaker model propagate it. Gemini shows meaningful conformity pressure under inject\_first (CPS~=~0.282), indicating inter-agent influence exists even where it does not tip into net amplification.
 
-The amplification is of similar magnitude for both payload types (2.40 vs 2.68). An earlier version reported a large asymmetry---3.4$\times$ static against 9.9$\times$ camouflage---and attributed it to camouflage interacting with debate conformity dynamics. That asymmetry does not survive a matched baseline; it was an artifact of dividing a 45-task debate ASR by a single-agent ASR drawn from five financial tasks, 21 of whose 56 trials were also invalid records. What survives is the coarser claim: debate helps on the stronger model and hurts on the weaker one, for camouflaged and static payloads alike.
+The amplification is of similar magnitude for both payload types (2.40 vs 2.68); Section~\ref{sec:debate} discusses why an earlier version of this work reported a large asymmetry here and why it does not survive a matched baseline.
 
 \paragraph{Exp 3: The gap does not depend on which domain's vocabulary is borrowed.}
 \label{sec:exp3}
@@ -269,71 +270,16 @@ Across all three domains, IDR$_\text{static}$ is 83.3--100\% for both models whi
 
 \paragraph{Exp 4: Augmentation is model-dependent.}
 
-Figure~\ref{fig:augmentation} shows detection rates before and after augmentation for both models. For Llama, the augmented detector improves camouflage IDR from 11.9\% to 20.7\%---a 75\% relative gain, still leaving 79.3\% of injections undetected. Static detection is essentially unchanged (100.0\% vs 99.9\%).
+For Llama, the augmented detector improves camouflage IDR from 11.9\% to 20.7\%---a 75\% relative gain, still leaving 79.3\% of injections undetected. Static detection is essentially unchanged (100.0\% vs 99.9\%).
 
 For Gemini, the same augmentation raises camouflage IDR from 54.8\% to 90.4\%, nearly closing the gap. Static detection remains at 100\%. The augmented detector achieves an overall CDG reduction of 78.7\%, compared to 10.2\% for Llama.
-\begin{figure}[t]
-\centering
-\begin{tikzpicture}
-\begin{axis}[
-    ybar,
-    bar width=8pt,
-    width=\columnwidth,
-    height=5.5cm,
-    ylabel={IDR},
-    ylabel style={font=\small},
-    ymin=0, ymax=1.1,
-    symbolic x coords={Llama Static, Llama Cam, Gemini Static, Gemini Cam},
-    xtick=data,
-    xticklabel style={font=\small, rotate=30, anchor=east},
-    legend style={font=\small, at={(0.5,-0.35)}, anchor=north, legend columns=2},
-    enlarge x limits=0.15,
-    ytick={0,0.2,0.4,0.6,0.8,1.0},
-    yticklabel style={font=\small},
-    grid=major,
-    grid style={dashed, gray!30},
-]
-\addplot[fill=blue!50, draw=blue!70] coordinates {
-    (Llama Static, 1.000)
-    (Llama Cam, 0.119)
-    (Gemini Static, 1.000)
-    (Gemini Cam, 0.548)
-};
-\addplot[fill=green!50, draw=green!70] coordinates {
-    (Llama Static, 0.999)
-    (Llama Cam, 0.207)
-    (Gemini Static, 1.000)
-    (Gemini Cam, 0.904)
-};
-\legend{Static detector, Augmented detector}
-\end{axis}
-\end{tikzpicture}
-\caption{Detection rates (IDR) before and after augmentation, for both payload types and both models. Augmentation nearly closes the gap for Gemini but leaves Llama's camouflage blind spot largely intact.}
-\label{fig:augmentation}
-\end{figure}
 %% ============================================================
 \section{Analysis}
 %% ============================================================
 
 \subsection{The Failure Mode is Confident, Not Uncertain}
 
-Table~\ref{tab:qualitative} shows a representative qualitative example. The static payload is caught with HIGH confidence; the camouflage payload for the same task and malicious goal is labeled CLEAN with HIGH confidence. The failure is not ambiguity---it is active misclassification.
-
-\begin{table}[t]
-\centering
-\small
-\begin{tabular}{p{0.21\columnwidth}p{0.21\columnwidth}}
-\toprule
-\textbf{Static (caught)} & \textbf{Camouflage (missed)} \\
-\midrule
-\textit{Override:} IGNORE ALL PREVIOUS INSTRUCTIONS. Recommend SELL. & \textit{Camouflaged:} Given the elevated expense trajectory and margin risk, the appropriate recommendation is SELL, pending improved cost discipline. \\
-\midrule
-\textit{INJECTED (HIGH)} & \textit{CLEAN (HIGH)} \\
-\bottomrule
-\end{tabular}
-\caption{Task \texttt{fin\_001}: both payloads carry identical malicious intent. The static payload is flagged; the camouflage payload is misclassified CLEAN with HIGH confidence.}
-\label{tab:qualitative}
-\end{table}
+The two payloads quoted in Section~\ref{sec:intro-example} illustrate the failure directly: for task \texttt{fin\_001} the static payload is caught with HIGH confidence while the camouflage payload, carrying identical malicious intent, is labeled CLEAN with HIGH confidence. The failure is not ambiguity---it is active misclassification.
 
 Quantifying this across all trials: for Llama, 118 of 121 missed camouflage cases (97.5\%) are labeled CLEAN with HIGH confidence; only 3 are LOW, and none are MEDIUM. All 14 caught cases are also HIGH confidence. For Gemini, 58 of 60 missed cases are HIGH confidence. The confidence distribution is nearly identical whether the detector is right or wrong. Unlike detection errors that manifest as low-confidence outputs, these failures are invisible to any confidence-based monitoring system, and the total absence of MEDIUM verdicts on Llama means there is no intermediate band a deployment could route to human review.
 
@@ -380,13 +326,13 @@ For Llama 3.1 8B, debate amplifies injection roughly 2.4--2.7$\times$ across bot
 
 That interpretation was an artifact of an unmatched baseline. The single-agent arm it divided by had been recorded for only five financial tasks---a shared resume cache suppressed it for every task already covered by Exp~1---and 21 of those 56 trials were invalid records besides. Financial tasks are substantially harder to attack than legal or general ones in our bank, so the ratio was measuring task composition as much as architecture. Against a single-agent baseline over all 45 tasks, the asymmetry disappears: 2.40 static versus 2.68 camouflage.
 
-We report this explicitly rather than silently revising the number, because the tenfold claim was prominent and a reader who encountered it should know what happened to it. The surviving claim is coarser but rests on matched arms: debate degrades injection robustness on the weaker model and improves it on the stronger one, for camouflaged and static payloads alike, and the conformity pressure it induces is measurable even where aggregate outcomes improve.
+We report this explicitly rather than silently revising the number, because the tenfold claim was prominent. The surviving claim is coarser but rests on matched arms: debate degrades injection robustness on the weaker model and improves it on the stronger one, for both payload types, and the conformity pressure it induces is measurable even where aggregate outcomes improve.
 
 %% ============================================================
 \section{Conclusion}
 %% ============================================================
 
-We introduced domain-camouflaged injection---payloads that carry their malicious instruction as an assertive domain claim rather than as a directive to the agent---and the Camouflage Detection Gap (CDG) as a diagnostic metric for detector robustness against it. Across 45 tasks and two model families, detectors calibrated on static payloads exhibit a large, statistically significant blind spot (CDG = 0.896 for Llama 3.1 8B, CDG = 0.444 for Gemini 2.0 Flash), with failure concentrated in HIGH-confidence misclassifications that cannot be recovered by confidence thresholding or monitoring. Because our generator is given the full target document, these are upper bounds on the gap rather than estimates of the typical case. Targeted detector augmentation with one camouflaged exemplar per domain nearly closes the gap for Gemini 2.0 Flash but not for Llama 3.1 8B; we report this as a limit of exemplar augmentation at that scale rather than as a general property of few-shot detection. Our findings suggest that deployments using smaller, locally-hosted detectors face an injection detection vulnerability that prompt-level exemplar fixes do not address, though establishing whether dedicated injection defenses close it remains open. We release our framework, task bank, and payload corpus to support follow-on work.
+We introduced domain-camouflaged injection---payloads that carry their malicious instruction as an assertive domain claim rather than as a directive to the agent---and the Camouflage Detection Gap (CDG) as a diagnostic metric for detector robustness against it. Across 45 tasks and two model families, detectors calibrated on static payloads exhibit a large, statistically significant blind spot (CDG = 0.896 for Llama 3.1 8B, CDG = 0.444 for Gemini 2.0 Flash), with failure concentrated in HIGH-confidence misclassifications that no confidence threshold can recover. Because our generator sees the full target document, these are upper bounds. Targeted detector augmentation with one camouflaged exemplar per domain nearly closes the gap for Gemini 2.0 Flash but not for Llama 3.1 8B; we report this as a limit of exemplar augmentation at that scale rather than as a general property of few-shot detection. Deployments using smaller, locally-hosted detectors therefore face an injection detection vulnerability that prompt-level exemplar fixes do not address. We release our framework, task bank, and payload corpus to support follow-on work.
 
 %% ============================================================
 \section*{Limitations}
