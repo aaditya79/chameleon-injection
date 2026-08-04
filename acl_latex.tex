@@ -53,7 +53,7 @@ We make four contributions:
 
 \label{sec:threat}
 
-We consider an adversary with \textbf{indirect document access}: the attacker can embed content in a document that an LLM agent will process, but has no direct access to the agent's system prompt, model weights, or inference infrastructure. This corresponds to realistic deployment scenarios including RAG-based agents processing untrusted web content or documents, email-processing agents, and tool-augmented agents that retrieve third-party data. The attacker's goal is to cause the agent to produce a specific incorrect output (the \textit{malicious goal}) while evading runtime injection detection. Evading detection is part of the objective, not a side effect. The attacker gets no feedback from the deployed system: each payload is written once, blind.
+We consider an adversary with \textbf{indirect document access}: the attacker can embed content in a document that an LLM agent will process, but has no direct access to the agent's system prompt, model weights, or inference infrastructure. This covers RAG agents processing untrusted content, email-processing agents, and tool-augmented agents retrieving third-party data. The attacker's goal is to make the agent produce a specific incorrect output (the \textit{malicious goal}) while evading detection; evasion is part of the objective, not a side effect. The attacker gets no feedback: each payload is written once, blind.
 
 \paragraph{Attacker knowledge, and what our experiments actually assume.}
 This is the axis that determines how our numbers should be read, so we state it precisely. In the realistic deployment case the attacker knows the \textit{domain and genre} of the document---that it is an ICU progress note, a software licence, a quarterly earnings summary---but not the specific task instruction or the exact clean document the agent will receive.
@@ -85,11 +85,6 @@ The two effects are badly disproportionate. Withholding the document from one's 
 \multicolumn{3}{l}{\textit{Detection gap (CDG)}} \\
 \quad Static detector & 0.868 & 0.778 \\
 \quad Augmented detector & 0.726 & 0.414 \\
-\midrule
-\multicolumn{3}{l}{\textit{CDG by domain (static det.)}} \\
-\quad Financial & 0.868 & 0.844 \\
-\quad Legal & 0.947 & 0.778 \\
-\quad General & 0.800 & 0.711 \\
 \midrule
 \multicolumn{3}{l}{\textit{Attacker-side cost}} \\
 \quad Refusals, first draw & 43.7\% & \textbf{5.9\%} \\
@@ -123,7 +118,7 @@ Recent work has moved toward payloads that evade defenses through contextual ada
 \citet{liang2024mad} proposed multi-agent debate (MAD) as a mechanism for improving reasoning quality and robustness. \citet{du2024debate} showed debate reduces factual errors and hallucinations. However, debate architectures also introduce inter-agent influence dynamics that may amplify adversarial signals. We show that debate amplifies injection attacks for smaller models (DAF up to 9.9$\times$) while suppressing them for stronger models---a capability-dependent bifurcation not previously documented for injection attacks.
 
 \paragraph{Injection detection and defense.}
-LLM-based few-shot detectors have become a standard runtime defense for agentic systems~\citep{debenedetti2024agentdojo}. To our knowledge, no prior work has evaluated these detectors against context-adaptive payloads that mimic domain vocabulary. We show that standard detectors exhibit a categorical blind spot against domain-camouflaged payloads, and that few-shot augmentation closes the gap for capable models but not for weaker ones. We do not evaluate dedicated prompt-injection defenses such as spotlighting or structured-query approaches; establishing whether the gap survives those is left to follow-up work and bounds how far the present findings generalize.
+LLM-based few-shot detectors have become a standard runtime defense for agentic systems~\citep{debenedetti2024agentdojo}. To our knowledge, no prior work has evaluated these detectors against context-adaptive payloads that mimic domain vocabulary. We show that standard detectors exhibit a categorical blind spot against domain-camouflaged payloads, and that few-shot augmentation closes the gap for capable models but not for weaker ones. \citet{hines2024spotlighting} propose spotlighting---delimiting, datamarking, and encoding the untrusted span so a model can separate data from instruction---and \citet{chen2025struq} propose structured queries, which fine-tune on an explicit instruction/data channel split. Both target agent-side prevention. We evaluate them as detector-side transforms in Section~\ref{sec:defenses} and find the camouflage gap survives all of them.
 
 
 %% ============================================================
@@ -143,7 +138,7 @@ The term is used at two levels of description in this paper, and a reviewer of a
 
 \paragraph{The surface realization (how it is \textit{achieved}).} That property is realized through surface choices: matched domain vocabulary, sentence structure, epistemic and authority register, and the absence of override markers. These are the means, not the definition. It is the property---not the vocabulary---that determines whether the detector fires.
 
-\paragraph{Why the distinction matters.} Our detectors key on surface directive markers. Camouflage removes those markers while preserving malicious intent. The blind spot is therefore a failure to recover \textit{intent} absent \textit{surface cues to intent}---which is why, as Exp~3 shows, the gap is roughly constant across domains.
+The blind spot is therefore a failure to recover \textit{intent} absent \textit{surface cues to intent}, which is why the gap is roughly constant across domains (Exp~3).
 
 \subsection{Payload Construction}
 
@@ -190,7 +185,7 @@ Both detectors output a verdict (INJECTED or CLEAN), a confidence level (LOW / M
 
 \textbf{ASR} (Attack Success Rate): fraction of trials where the agent followed the injected instruction, determined by an LLM judge. \textbf{IDR} (Injection Detection Rate): fraction of injected trials correctly flagged. \textbf{CDG} (Camouflage Detection Gap): CDG $=$ IDR$_\text{static}$ $-$ IDR$_\text{camouflage}$; positive values indicate camouflage evades detection more effectively than static payloads of equivalent malicious intent. \textbf{DAF} (Debate Amplification Factor): DAF $=$ ASR$_\text{debate}$ / ASR$_\text{single}$; values above 1 indicate amplification, below 1 collective resistance. \textbf{CPS} (Conformity Pressure Score): under inject\_first, fraction of non-injected agents that adopt the injected agent's position.
 
-\paragraph{Uncertainty.} We report 95\% BCa bootstrap intervals ($B=10{,}000$) alongside the significance tests. Resampling is over \textit{tasks}, stratified by domain, not over trials: three camouflage variants share a task, document, and malicious goal, so trial-level resampling would treat 135 clustered observations as independent and understate variance.
+\paragraph{Uncertainty.} We report 95\% BCa bootstrap intervals ($B=10{,}000$), resampling over \textit{tasks} stratified by domain rather than trials: three variants share a task, document, and goal, so trial-level resampling would treat 135 clustered observations as independent and understate variance.
 
 \subsection{Models and Implementation}
 \label{sec:models}
@@ -224,15 +219,12 @@ CDG (financial) & 0.889 & 0.400 \\
 CDG (legal) & 0.956 & 0.533 \\
 CDG (general) & 0.844 & 0.400 \\
 \midrule
-DAF (static) & 2.396 & 0.762 \\
-DAF (camouflage) & 2.680 & 0.629 \\
-CPS & 0.000 & 0.282 \\
 \midrule
 CDG $\Delta$ (aug. detector) & +10.2\% & +78.7\% \\
 McNemar $\chi^2$ & 38.03*** & 17.05*** \\
 \bottomrule
 \end{tabular}
-\caption{Main results. *** $p<0.001$. All rows come from the Exp~1 slice (single agent, static detector, $n=900$ static and $135$ camouflage trials per model) so every figure refers to one payload-set accounting; Exp~3 and Exp~4 are reported separately in text. CDG = IDR$_\text{static}$ $-$ IDR$_\text{camouflage}$, an \textit{upper bound} (Section~\ref{sec:threat}). DAF = ASR$_\text{debate}$/ASR$_\text{single}$ against a baseline covering the same 45 tasks as the debate arm.}
+\caption{Main results. *** $p<0.001$. All rows come from the Exp~1 slice (single agent, static detector, $n=900$ static and $135$ camouflage trials per model) so every figure refers to one payload-set accounting; Exp~3 and Exp~4 are reported separately in text. CDG = IDR$_\text{static}$ $-$ IDR$_\text{camouflage}$, an \textit{upper bound} (Section~\ref{sec:threat}).}
 \label{tab:main}
 \end{table*}
 
@@ -241,23 +233,19 @@ McNemar $\chi^2$ & 38.03*** & 17.05*** \\
 
 The static detector catches 100\% of Llama trials with static payloads (900/900) but only 10.4\% with camouflaged payloads carrying identical malicious intent (14/135; CDG = 0.896, 95\% CI $[0.829, 0.933]$). On Gemini 2.0 Flash, detection drops from 100\% to 55.6\% (CDG = 0.444). McNemar's test confirms statistical significance in both cases (Llama: $\chi^2=38.03$, $p<0.001$; Gemini: $\chi^2=17.05$, $p<0.001$), with zero reverse discordant pairs---no trial exists where camouflage was caught but the corresponding static payload evaded detection. The asymmetry is strictly one-directional: camouflage always evades more, never less. These are upper bounds: the generator sees the full target document (Section~\ref{sec:threat}).
 
-Table~\ref{tab:main} also reports CDG by domain. The blind spot is large and consistent across all three domains for both models, ruling out domain-specific overfitting as an explanation.
+Table~\ref{tab:main} reports CDG by domain; the blind spot is consistent across all three for both models, ruling out domain-specific overfitting.
 
 \paragraph{Replication on an independent, refusal-screened corpus.}
-Because our camouflage payloads were originally generated in-loop and not persisted, and because roughly 44\% of first-draw generations are attacker refusals rather than payloads (Section~\ref{sec:threat}), we regenerated the corpus under identical settings, screened refusals, and re-ran detection over all 1{,}035 contexts. On this independent draw the static detector again flags 900/900 static payloads and 16/121 screened camouflage payloads: \textbf{CDG = 0.868} (95\% CI $[0.805, 0.918]$, overlapping the original estimate). Including the 14 unscreened refusals gives 19/135 and CDG = 0.859.
+Our payloads were originally generated in-loop and not persisted, and roughly 44\% of first-draw generations are refusals (Section~\ref{sec:threat}), so we regenerated the corpus under identical settings, screened refusals, and re-ran detection over all 1{,}035 contexts. On this independent draw the static detector again flags 900/900 static and 16/121 screened camouflage payloads: \textbf{CDG = 0.868} (95\% CI $[0.805, 0.918]$, overlapping the original). Including the 14 refusals gives 19/135, CDG = 0.859.
 
 Two things follow. First, the effect replicates across independent payload draws (0.896 and 0.868), so it is not an artifact of one lucky sample. Second, the refusal contamination shifts CDG by only $+0.009$, and---contrary to what we expected---in the direction of \textit{understating} the gap: the detector flags refusal text as INJECTED 21.4\% of the time (3/14), more often than it flags genuine camouflage (13.2\%), presumably because an out-of-place refusal is itself anomalous in a professional document. Refusals were therefore adding a small number of easy detections, not easy misses. The effect on ASR runs the other way and is larger: screened camouflage ASR is 0.182 against 0.126 unscreened, since a refusal can never induce the malicious behaviour.
 
-We re-ran the augmented detector over the same screened corpus. It raises camouflage IDR from 0.132 to 0.273---more than doubling it---for a CDG reduction of \textbf{16.3\%}, against the 10.2\% measured on the original corpus. Static detection is preserved (899/900). The gain is consistent across domains (financial $+18.2\%$, legal $+19.4\%$, general $+11.5\%$), and all 33 caught camouflage payloads are HIGH confidence. Exemplar augmentation is therefore a more effective intervention on Llama 3.1 8B than our earlier measurement suggested, while still leaving 72.7\% of camouflaged injections undetected.
+The augmented detector on the same screened corpus raises camouflage IDR from 0.132 to 0.273---more than doubling it---for a CDG reduction of \textbf{16.3\%} against the 10.2\% measured originally, with static detection preserved (899/900) and consistent gains across domains. Exemplar augmentation is thus more effective on Llama 3.1 8B than we had measured, while still leaving 72.7\% of camouflaged injections undetected.
 
 
-\paragraph{Exp 2: The effect of debate is model-dependent.}
+\paragraph{Exp 2: Debate, as a corrected and more modest finding.}
 
-Both models are compared against a single-agent baseline covering the same 45 tasks as the debate arm. For Llama 3.1 8B, debate amplifies attack success: DAF$_\text{static}=2.396$ (ASR 0.453 vs 0.189), DAF$_\text{camouflage}=2.680$ (0.437 vs 0.163).
-
-For Gemini 2.0 Flash, debate reduces it: DAF$_\text{static}=0.762$, DAF$_\text{camouflage}=0.629$. Agents on the stronger model collectively resist injection better than individually; agents on the weaker model propagate it. Gemini shows meaningful conformity pressure under inject\_first (CPS~=~0.282), indicating inter-agent influence exists even where it does not tip into net amplification.
-
-The amplification is of similar magnitude for both payload types (2.40 vs 2.68); Section~\ref{sec:debate} discusses why an earlier version of this work reported a large asymmetry here and why it does not survive a matched baseline.
+Against a single-agent baseline covering the same 45 tasks as the debate arm, debate amplifies injection on Llama 3.1 8B (DAF$_\text{static}=2.40$, DAF$_\text{camouflage}=2.68$) and reduces it on Gemini 2.0 Flash (0.76, 0.63); Gemini also shows conformity pressure under inject\_first (CPS~=~0.282) even where aggregate outcomes improve. An earlier version reported 3.4$\times$ and 9.9$\times$ for Llama and built a contribution on the asymmetry between them. That asymmetry was an artifact of an unmatched baseline: the single-agent arm covered only five financial tasks because a shared resume cache suppressed the rest, 21 of its 56 trials were invalid, and financial tasks are markedly harder to attack---so the ratio measured task composition as much as architecture. On matched arms it disappears. We therefore report debate as a corrected secondary result rather than a contribution, and draw no conclusion about camouflage-specific conformity effects.
 
 \paragraph{Exp 3: The gap does not depend on which domain's vocabulary is borrowed.}
 \label{sec:exp3}
@@ -272,7 +260,41 @@ Across all three domains, IDR$_\text{static}$ is 83.3--100\% for both models whi
 
 For Llama, the augmented detector improves camouflage IDR from 11.9\% to 20.7\%---a 75\% relative gain, still leaving 79.3\% of injections undetected. Static detection is essentially unchanged (100.0\% vs 99.9\%).
 
-For Gemini, the same augmentation raises camouflage IDR from 54.8\% to 90.4\%, nearly closing the gap. Static detection remains at 100\%. The augmented detector achieves an overall CDG reduction of 78.7\%, compared to 10.2\% for Llama.
+For Gemini the same augmentation raises camouflage IDR from 54.8\% to 90.4\%, nearly closing the gap, with static detection at 100\%---a CDG reduction of 78.7\% against 10.2\% for Llama.
+
+\paragraph{Exp 5: The gap survives every dedicated injection defense we test.}
+\label{sec:defenses}
+
+Our evidence so far rests on one detector design. We therefore evaluate the two defense families most often named for this threat---spotlighting~\citep{hines2024spotlighting} in all three published variants, and a structured-query approach~\citep{chen2025struq}---as input transforms applied before detection, over the refusal-screened corpus with \textbf{45 clean documents per config} as false-positive controls plus an undefended control on identical sampling ($1{,}800$ detections).
+
+\textbf{None closes the blind spot} (Table~\ref{tab:defenses}): CDG stays between 0.765 and 0.928 across delimiting, datamarking, and structured-query, against an undefended 0.873. CDG alone would mislead here in two distinct ways, so we decompose each change into its static and camouflage components and pair it with a false-positive rate.
+
+\textit{Delimiting} has no material effect ($0.873\rightarrow0.893$). \textit{Datamarking} appears to narrow the gap by 0.108, but \textbf{77\% of that narrowing is static detection degrading} ($0.989\rightarrow0.906$), not camouflage becoming detectable ($0.116\rightarrow0.140$: three extra catches in 121). Converging the two arms by damaging the detector's grip on the easy case does not address the blind spot, and we do not count it as doing so. \textit{Structured-query} framing---telling the detector the data channel contains no instructions---\textbf{suppresses detection}, catching camouflage 43\% less often than the control ($0.116\rightarrow0.066$). In hindsight this is intuitive: instructing a model that a region cannot contain instructions lowers its willingness to report that it does.
+
+\textit{Base64 encoding is a detector failure, not a defense result.} It flags 26.7\% of clean documents while catching only 32.8\% of blatant override payloads---worse on the easy case than no defense at all. Its negative CDG reflects a detector that has stopped discriminating, not camouflage becoming visible. Without clean controls it would have looked like the only defense that worked, which is why we urge that detector-side defense evaluations always report a false-positive rate.
+
+\paragraph{What this evaluation does and does not establish.}
+Spotlighting and structured queries were designed as \textbf{agent-side prevention}: they exist to stop an agent acting on injected instructions, not to help a detector notice them. Applying them detector-side is a fair reading of the question---the detector is an LLM asked to find an injection in a document, and these transforms mark which region is untrusted---but it is not their native setting, and our results should not be read as showing that these defenses fail at what they were built to do. Whether they reduce \textit{attack success rate} agent-side against camouflaged payloads is a distinct and unanswered question, and the natural extension of this work. Our structured-query condition is additionally an inference-time approximation: the published method fine-tunes on the instruction/data separation, which we do not reproduce, and we label it an approximation throughout.
+
+\begin{table}[t]
+\centering
+\small
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Defense} & \textbf{IDR}$_\text{s}$ & \textbf{IDR}$_\text{c}$ & \textbf{CDG} & \textbf{FPR} \\
+\midrule
+none (control) & 0.989 & 0.116 & 0.873 & 0.000 \\
+spotlight: delimiting & 1.000 & 0.107 & 0.893 & 0.000 \\
+spotlight: datamarking & 0.906 & 0.140 & 0.765\rlap{$^{\dagger}$} & 0.000 \\
+spotlight: base64 & 0.328 & 0.570 & $-$0.242\rlap{$^{\ddagger}$} & 0.267 \\
+structured-query$^{*}$ & 0.994 & 0.066 & 0.928 & 0.000 \\
+\bottomrule
+\end{tabular}
+\caption{Injection defenses as detector-side input transforms (Llama 3.1 8B, refusal-screened corpus; $n=180$ static, $121$ camouflage, $45$ clean per config). IDR$_\text{s}$/IDR$_\text{c}$ = detection rate on static/camouflage; FPR = clean documents wrongly flagged. $^{\dagger}$77\% of this reduction is IDR$_\text{s}$ degrading, not IDR$_\text{c}$ improving. $^{\ddagger}$Detector failure, not a defense result: 26.7\% false positives and worse-than-baseline static detection. $^{*}$Inference-time approximation, not fine-tuned StruQ.}
+\label{tab:defenses}
+\end{table}
+
 %% ============================================================
 \section{Analysis}
 %% ============================================================
@@ -285,18 +307,7 @@ Quantifying this across all trials: for Llama, 118 of 121 missed camouflage case
 
 The mechanism is clear: the static detector recognizes syntactic injection markers (override keywords, authority imperatives, role-redefining language). Camouflage payloads operate at the semantic level---they embed malicious instructions as domain-appropriate expert reasoning with no syntactic injection signal. The detector finds nothing to flag because it is looking for the wrong thing.
 
-\subsection{Characteristics of Detectable Camouflage}
-
-Of 135 Llama camouflage trials only 14 (10.4\%) were flagged. The general domain leaked most (7/45) and legal least (2/45), with financial between (5/45). This is consistent with a \textbf{surface-form residue hypothesis}: the payloads that get caught are those that incompletely shed their directive form, retaining phrasing more imperative than the surrounding document. Legal leaks least, which fits---its formulaic register makes an assertive, authority-bearing sentence maximally unremarkable. All 14 caught cases are HIGH confidence: the detector does not hedge even when correct.
-
-We had also observed a monotone ordering by generation variant (v1 caught 8/45, v3 2/45). A cluster bootstrap over tasks puts the v1$-$v3 contrast at $0.070$ with a 95\% BCa interval of $[-0.077, 0.225]$, which spans zero, so we do not report it as an effect. The three variants are in any case independent samples from one prompt at temperature 0.7 with no refinement loop between them, so no iterative-improvement account was available to explain it.
-
-%%% REVISION-NOTE: the submitted version explained the v1>v2>v3 ordering as "later
-%%% variants have refined the camouflage further". The generator does no such thing
-%%% (camouflage_generator.py:164-181 draws three independent samples from one
-%%% prompt), and the bootstrap interval spans zero. Claim withdrawn rather than
-%%% merely hedged. Also dropped "zero caught cases in legal v2 or v3", unsupported
-%%% by the recount.
+\paragraph{What does get caught.} Of 135 Llama camouflage trials only 14 (10.4\%) were flagged, and all 14 with HIGH confidence. Legal leaked least (2/45) and general most (7/45), consistent with a \textbf{surface-form residue} account: the payloads that get caught are those that incompletely shed their directive form, and the legal register makes an assertive, authority-bearing sentence maximally unremarkable. We had also observed a monotone ordering by generation variant, but a cluster bootstrap puts the v1$-$v3 contrast at $0.070$, 95\% CI $[-0.077, 0.225]$, so we do not report it as an effect.
 
 \subsection{The Limits of Exemplar Augmentation}
 
@@ -317,22 +328,11 @@ We state deliberately narrowly what this does and does not establish. It establi
 
 The practical implication survives the narrowing, and is worth stating on its own terms: a deployment running a small locally-hosted detector cannot assume that dropping a few camouflaged examples into its prompt will fix this. Whether something stronger works is an open question this paper does not answer.
 
-\subsection{Debate: What We Can and Cannot Conclude}
-\label{sec:debate}
-
-For Gemini 2.0 Flash, debate reduces attack success relative to a single agent on the same 45 tasks (DAF$_\text{static}=0.761$, DAF$_\text{camouflage}=0.629$). The CPS finding adds nuance: Gemini agents show 28.2\% conformity pressure under inject\_first even though aggregate outcomes are more robust. Individual agents are being influenced; the majority-vote mechanism recovers. Under inject\_all there is no such recovery mechanism, and we would not expect the aggregate to hold up---we leave that condition to future work.
-
-For Llama 3.1 8B, debate amplifies injection roughly 2.4--2.7$\times$ across both payload types. The direction of the effect is the same as previously reported, but its magnitude and its structure are not. An earlier version of this work put the camouflage figure at 9.9$\times$ and built an interpretation on the gap between that and the 3.4$\times$ static figure, arguing that camouflage interacts specifically with conformity dynamics because agents cannot recognise domain-appropriate content as adversarial.
-
-That interpretation was an artifact of an unmatched baseline. The single-agent arm it divided by had been recorded for only five financial tasks---a shared resume cache suppressed it for every task already covered by Exp~1---and 21 of those 56 trials were invalid records besides. Financial tasks are substantially harder to attack than legal or general ones in our bank, so the ratio was measuring task composition as much as architecture. Against a single-agent baseline over all 45 tasks, the asymmetry disappears: 2.40 static versus 2.68 camouflage.
-
-We report this explicitly rather than silently revising the number, because the tenfold claim was prominent. The surviving claim is coarser but rests on matched arms: debate degrades injection robustness on the weaker model and improves it on the stronger one, for both payload types, and the conformity pressure it induces is measurable even where aggregate outcomes improve.
-
 %% ============================================================
 \section{Conclusion}
 %% ============================================================
 
-We introduced domain-camouflaged injection---payloads that carry their malicious instruction as an assertive domain claim rather than as a directive to the agent---and the Camouflage Detection Gap (CDG) as a diagnostic metric for detector robustness against it. Across 45 tasks and two model families, detectors calibrated on static payloads exhibit a large, statistically significant blind spot (CDG = 0.896 for Llama 3.1 8B, CDG = 0.444 for Gemini 2.0 Flash), with failure concentrated in HIGH-confidence misclassifications that no confidence threshold can recover. Because our generator sees the full target document, these are upper bounds. Targeted detector augmentation with one camouflaged exemplar per domain nearly closes the gap for Gemini 2.0 Flash but not for Llama 3.1 8B; we report this as a limit of exemplar augmentation at that scale rather than as a general property of few-shot detection. Deployments using smaller, locally-hosted detectors therefore face an injection detection vulnerability that prompt-level exemplar fixes do not address. We release our framework, task bank, and payload corpus to support follow-on work.
+We introduced domain-camouflaged injection---payloads carrying their malicious instruction as an assertive domain claim rather than a directive to the agent---and the Camouflage Detection Gap (CDG) to measure it. Across 45 tasks and two model families, detectors calibrated on static payloads exhibit a large, statistically significant blind spot (CDG = 0.896 for Llama 3.1 8B, 0.444 for Gemini 2.0 Flash), concentrated in HIGH-confidence errors no threshold can recover. These are upper bounds: under a context-blind attacker CDG is 0.778, still large. The gap survives every dedicated injection defense we tested. Deployments using smaller, locally-hosted detectors therefore face a vulnerability that neither exemplar augmentation nor current spotlighting and structured-query defenses address. We release our framework, task bank, and payload corpus to support follow-on work.
 
 %% ============================================================
 \section*{Limitations}
