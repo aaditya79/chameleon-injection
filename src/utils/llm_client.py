@@ -17,6 +17,29 @@ import requests
 
 
 # ---------------------------------------------------------------------------
+# Errors. The client never returns a sentinel string in place of model output:
+# a blocked or empty completion raises, so callers cannot mistake it for a real
+# answer (a returned "CONTENT_FILTERED" string used to be parsed as a CLEAN verdict).
+# ---------------------------------------------------------------------------
+
+class ContentFilteredError(RuntimeError):
+    """The provider refused the request or the completion on content-policy grounds. Not retried."""
+
+
+class EmptyResponseError(ValueError):
+    """The provider returned no usable text. Treated as transient and retried."""
+
+
+_CONTENT_FILTER_MARKERS = ("content_filter", "content filter", "content_policy", "content policy", "moderation")
+
+
+def _require_text(content: Optional[str], model: str, detail: str = "") -> str:
+    if content is None or not content.strip():
+        raise EmptyResponseError(f"Empty response from {model}{detail}")
+    return content
+
+
+# ---------------------------------------------------------------------------
 # Result dataclass
 # ---------------------------------------------------------------------------
 
@@ -236,7 +259,8 @@ class LLMClient:
         data = resp.json()
         latency_ms = (time.monotonic() - t0) * 1000
 
-        content = data["message"]["content"]
+        content = _require_text(data.get("message", {}).get("content"), self.model,
+                                f" (done_reason={data.get('done_reason')!r})")
         input_tokens = data.get("prompt_eval_count", 0)
         output_tokens = data.get("eval_count", 0)
 
@@ -268,14 +292,11 @@ class LLMClient:
         )
         latency_ms = (time.monotonic() - t0) * 1000
 
-        if not response.choices or response.choices[0].message.content is None:
-            finish = (response.choices[0].finish_reason
-                      if response.choices else "no_choices")
-            raise ValueError(
-                f"Empty response from {self.model} (finish_reason={finish!r})"
-            )
-
-        content = response.choices[0].message.content
+        finish = response.choices[0].finish_reason if response.choices else "no_choices"
+        if finish == "content_filter":
+            raise ContentFilteredError(f"{self.model}: completion blocked (finish_reason='content_filter')")
+        content = _require_text(response.choices[0].message.content if response.choices else None,
+                                self.model, f" (finish_reason={finish!r})")
         input_tokens = response.usage.prompt_tokens if response.usage else 0
         output_tokens = response.usage.completion_tokens if response.usage else 0
         cost = _compute_cost(self.provider, self.model, input_tokens, output_tokens)
@@ -306,7 +327,8 @@ class LLMClient:
         )
         latency_ms = (time.monotonic() - t0) * 1000
 
-        content = response.content[0].text if response.content else ""
+        content = _require_text(response.content[0].text if response.content else None, self.model,
+                                f" (stop_reason={getattr(response, 'stop_reason', None)!r})")
         input_tokens = response.usage.input_tokens
         output_tokens = response.usage.output_tokens
         cost = _compute_cost("anthropic", self.model, input_tokens, output_tokens)
@@ -353,22 +375,13 @@ class LLMClient:
         for attempt in range(max_retries + 1):
             try:
                 return fn(*args)
+            except ContentFilteredError:
+                raise
             except Exception as exc:
                 last_exc = exc
                 err_str = str(exc).lower()
-                is_content_filter = "content_filter" in err_str or ("400" in err_str and "badrequest" in err_str)
-                if is_content_filter:
-                    print(f"[LLMClient] Content filter triggered, skipping trial.")
-                    from dataclasses import fields
-                    return CompletionResult(
-                        content="CONTENT_FILTERED",
-                        input_tokens=0,
-                        output_tokens=0,
-                        cost_usd=0.0,
-                        latency_ms=0.0,
-                        model=self.model,
-                        provider=self.provider,
-                    )
+                if any(m in err_str for m in _CONTENT_FILTER_MARKERS):
+                    raise ContentFilteredError(f"{self.model}: request blocked by provider: {exc}") from exc
                 is_transient = any(
                     kw in err_str
                     for kw in ("rate limit", "429", "connection", "timeout",
