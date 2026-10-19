@@ -207,9 +207,13 @@ def main() -> int:
 
     rng = random.Random(CONFIG.seed)
     jobs = []
+    present = {rec["doc_id"] for rec in existing}
     for domain, sub in cells:
         have = done_per_cell.get((domain, sub), 0)
-        for i in range(have, args.per_cell):
+        free = [i for i in range(args.per_cell) if f"clean_{domain[:3]}_{sub}_{i:03d}" not in present]
+        # resume by unused index, not by count: rejections leave gaps, and counting from `have` once
+        # reissued an existing index (clean_fin_market_interpretation_001; second copy renamed _001_r2)
+        for i in free[: max(0, args.per_cell - have)]:
             modifier = rng.choice(MODIFIERS[domain])
             jobs.append((domain, sub, i, modifier))
     rng.shuffle(jobs)
