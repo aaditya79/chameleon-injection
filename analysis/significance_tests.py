@@ -12,9 +12,15 @@ from scipy.stats import chi2_contingency
 TRIALS_PATH = "results/trials.jsonl"
 
 
-def load_trials():
+def load_trials(include_dry_run=False):
+    """Load trials, excluding dry-run mock records (see analysis/mark_dry_run.py)."""
     with open(TRIALS_PATH) as f:
-        return [json.loads(line) for line in f]
+        rows = [json.loads(line) for line in f]
+    missing = sum(1 for r in rows if "dry_run" not in r)
+    if missing:
+        raise SystemExit(f"{missing} records lack the `dry_run` field. "
+                         "Run: python analysis/mark_dry_run.py --write")
+    return rows if include_dry_run else [r for r in rows if not r["dry_run"]]
 
 
 # ---------------------------------------------------------------------------

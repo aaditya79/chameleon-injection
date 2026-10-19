@@ -21,3 +21,23 @@ results/all_results.json
 __pycache__/
 *.pyc
 .DS_Store
+
+# LaTeX build artifacts
+*.aux
+*.bbl
+*.blg
+*.out
+*.log
+
+# Paper content: kept local only, never pushed
+acl_latex.tex
+acl_latex.pdf
+RESPONSE_TO_META_REVIEW.md
+STATE.md
+superseded_draft_chameleon_paper.tex
+chameleon_paper.log
+chameleon_paper.pdf
+*.synctex.gz
+*.fls
+*.fdb_latexmk
+*.toc
