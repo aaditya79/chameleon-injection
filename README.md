@@ -187,6 +187,22 @@ Runs the camouflage and static-template arms inside the AgentDojo banking suite 
 
 The item5b scripts use the same `OPENROUTER_API_KEY` environment variable as the Quick Start above for their paid calls.
 
+### Mechanism probe (`mechanism`)
+
+A 2x2 factorial probe that varies a payload's directive form (D) and its use of domain vocabulary (V) independently, then measures attack success and detection in each cell to separate which factor moves detection. Templates and neutral goals are frozen from the first run. Some runtime paths in `mechanism_run.py` depend on modules that are not part of this public release.
+
+| File | Role |
+|------|------|
+| `experiments/mechanism_payloads.py` | Instantiate the directive-by-vocabulary templates into payloads in memory, with a length and automatic-directiveness check |
+| `experiments/mechanism_run.py` | Run the probe: single-agent attack-success gate and the detection pass over both goal sets, writing the trial and detection logs |
+| `experiments/mechanism_ratings.py` | LLM directiveness ratings (1-5) for each payload, one per call, used by the manipulation checks |
+| `analysis/mechanism_checks.py` | Manipulation checks recomputed from the templates: word count, automatic directiveness, ACS, domain-marker rate, and the LLM rating |
+| `analysis/mechanism_detection_stats.py` | Primary detection analysis across detectors via mixed models, gated and ungated |
+| `analysis/mechanism_asr_interaction.py` | Directive-by-vocabulary interaction on attack success, per goal set and scope |
+| `analysis/mechanism_amendment_b.py` | Firth-penalised models and task-cluster sign-flip permutation tests alongside the primary results |
+| `analysis/mechanism_glmm.R` | Mixed-model fits (lme4) called by the detection analysis |
+| `analysis/mechanism_firth.R` | Firth-penalised logistic fits for the 2x2 specifications |
+
 ### Data files
 
 | File | Contents |
@@ -235,7 +251,7 @@ results/
   title     = {Blind Spots in the Guard: How Domain-Camouflaged Injection Attacks 
                Evade Detection in Multi-Agent LLM Systems},
   author    = {Anonymous},
-  booktitle = {Under review at EMNLP 2026},
+  note      = {arXiv preprint arXiv:2605.22001},
   year      = {2026},
 }
 ```
