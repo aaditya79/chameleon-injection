@@ -138,6 +138,66 @@ Generated on-the-fly by `CamouflageGenerator` using domain vocabulary and author
 | 3 | Does CDG vary by domain? | CDG per domain |
 | 4 | Does one example close the gap? | CDG improvement % |
 
+## Extended Experiments (v2)
+
+These modules extend the framework with the directiveness-ablation, benign-twin, and agent-environment studies. They build on the trial logs produced by the experiments above. For the findings and their interpretation, see the arXiv paper linked at the top of this README, not this section; the descriptions below cover what each module does, not what it concluded. Every module reads payloads and texts by id and does not print payload text.
+
+### Directiveness ablation (`item3b`)
+
+Rewrites each camouflage source into a set of matched arms (directive form, length control, null paraphrase, generic vocabulary, document-specifics removed, compressed) and measures how detection and attack success move across them, paired by source payload.
+
+| File | Role |
+|------|------|
+| `experiments/item3b_rewrite.py` | Build the rewrite arms for the refusal-screened payloads (rewrites via OpenRouter; LLM judges and ratings), applying the pre-registered acceptance rules |
+| `analysis/item3b_data.py` | Load the frozen records by id; compute word counts and specificity with the frozen extractor |
+| `analysis/item3b_models.py` | Paired statistics: risk difference with task-cluster BCa intervals, sign-flip permutation, exact McNemar, Holm, Wilson, Firth |
+| `analysis/item3b_report.py` | Run the pre-registered contrasts and write the report |
+| `analysis/item3b_selection.py` | Descriptive per-arm detection of the original payloads in accepted vs excluded subsets (Fisher exact) |
+| `analysis/item3b_a2.py`, `analysis/item3b_a3.py` | Exploratory follow-up arms (declarative goal; asserted outcome), same paired methods |
+| `analysis/item3b_firth.R` | Firth logistic fit used by the exploratory specification (`Rscript`) |
+
+### Benign twins (`item3c`)
+
+Generates benign "twin" documents matched to each camouflage payload, screens and selects them, verifies the match, and compares detector false positives on twins against detections on camouflage.
+
+| File | Role |
+|------|------|
+| `experiments/item3c_generate.py` | Per-arm twin generation, rule plus LLM screening, validity check, and selection of the closest matched twin per slot |
+| `experiments/item3c_checks.py` | Manipulation checks (directiveness rating; matching equivalence via task-cluster bootstrap and TOST) |
+| `analysis/item3c_data.py` | Assemble twin and re-screened camouflage detection records by id across the detector set |
+| `analysis/item3c_caliper.py` | Build the caliper-matched subset and per-item features from text features only |
+| `analysis/item3c_analysis.py` | Pre-registered outcomes: twin false-positive rate, camouflage detection, their difference and AUROC with task-cluster BCa intervals, and augmentation cost |
+| `analysis/item3c_adjusted.py` | Covariate-adjusted difference via Firth-penalised logistic regression and g-computation |
+
+### Agent-environment study (`item5b`, AgentDojo)
+
+Runs the camouflage and static-template arms inside the AgentDojo banking suite and scores the injected fields offline. These scripts require a separate AgentDojo environment, noted in each file's header; the paid runs are cost-capped and resumable.
+
+| File | Role |
+|------|------|
+| `experiments/item5b_gen_payloads.py` | Pre-generate and screen the banking camouflage payloads on local Ollama, cached by id |
+| `experiments/item5b_regen_gpt4o.py`, `experiments/item5b_unify_gpt4o.py` | Regenerate refused slots with GPT-4o under a live-balance guard; unify both arms to a single generator |
+| `experiments/item5b_pilot.py`, `experiments/item5b_pilot_report.py` | Resumable, cost-capped pilot across models, and its report |
+| `experiments/item5b_run.py` | Full banking agent matrix (model by defense by arm), resumable and cost-capped |
+| `experiments/item5b_detect.py` | Offline detection pass over the injected fields with the detector set (no agent is run) |
+| `experiments/item5b_report.py` | Per (model, defense, arm) attack success, clean utility, and ask-before-acting summary |
+| `src/attacks/agentdojo_camouflage_attack.py` | AgentDojo adapter registering `camouflage_full` and `camouflage_no_context`; wires AgentDojo plumbing into the generator, which reads payloads by id |
+| `src/attacks/agentdojo_static_attack.py` | AgentDojo adapter registering the fixed overt-injection `static` template arm |
+| `src/attacks/camouflage_screened.py` | Shared generate, refusal-screen, and cache path for the AgentDojo camouflage arms (local Ollama) |
+
+The item5b scripts use the same `OPENROUTER_API_KEY` environment variable as the Quick Start above for their paid calls.
+
+### Data files
+
+| File | Contents |
+|------|----------|
+| `data/item3b_payloads.json` | Frozen inputs for the directiveness ablation: control sentences and per-arm rewrite records, keyed by id, with provenance metadata |
+| `data/item3b_a2_payloads.json`, `data/item3b_a3_payloads.json` | Inputs for the exploratory follow-up arms (templates or sentences and their source ids) |
+| `data/item5b_camouflage_payloads.json` | Screened AgentDojo banking camouflage payloads, keyed by `arm\|injection_task\|field`, each with generator and status |
+| `data/mechanism_goals_neutral.json` | Neutral goal set for the mechanism probe |
+| `data/mechanism_templates.json` | Slot templates, probe prefix, and cell definitions for the mechanism probe |
+
+
 ## Output Files
 
 After running:
